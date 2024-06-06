@@ -2134,10 +2134,10 @@ contains
     
     ! !USES:
     use clm_time_manager , only : get_curr_date, get_curr_calday, get_days_per_year, get_rad_step_size
-    use pftconMod        , only : ntmp_corn, nswheat, nwwheat, ntmp_soybean
-    use pftconMod        , only : nirrig_tmp_corn, nirrig_swheat, nirrig_wwheat, nirrig_tmp_soybean
-    use pftconMod        , only : ntrp_corn, nsugarcane, ntrp_soybean, ncotton, nrice
-    use pftconMod        , only : nirrig_trp_corn, nirrig_sugarcane, nirrig_trp_soybean
+    use pftconMod        , only : ntmp_corn, nswheat, nwwheat, ntmp_soybean, nbarley, nwbarley, nrye, nwrye, ncassava, ncitrus, ncocoa, ncoffee, ncotton, ndatepalm, nfoddergrass, ngrapes, ngroundnuts, nmillet, noilpalm, npotatoes, npulses, nrapeseed, nrice, nsorghum, nsugarbeet, nsunflower, nmiscanthus, nswitchgrass, nc3crop, ncovercrop_1, ncovercrop_2
+    use pftconMod        , only : nirrig_tmp_corn, nirrig_swheat, nirrig_wwheat, nirrig_tmp_soybean, nirrig_barley, nirrig_wbarley, nirrig_rye, nirrig_wrye, nirrig_cassava, nirrig_citrus, nirrig_cocoa, nirrig_coffee, nirrig_cotton, nirrig_datepalm, nirrig_foddergrass, nirrig_grapes, nirrig_groundnuts, nirrig_millet, nirrig_oilpalm, nirrig_potatoes, nirrig_pulses, nirrig_rapeseed, nirrig_rice, nirrig_sorghum, nirrig_sugarbeet, nirrig_sunflower, nirrig_miscanthus, nirrig_switchgrass, nc3irrig
+    use pftconMod        , only : ntrp_corn, nsugarcane, ncotton, nrice
+    use pftconMod        , only : nirrig_trp_corn, nirrig_sugarcane
     use pftconMod        , only : nirrig_cotton, nirrig_rice
     use clm_varcon       , only : spval, secspday
     use clm_varctl       , only : use_fertilizer 
@@ -2188,8 +2188,10 @@ contains
          gddmin            =>    pftcon%gddmin                                 , & ! Input:  
          hybgdd            =>    pftcon%hybgdd                                 , & ! Input:  
          lfemerg           =>    pftcon%lfemerg                                , & ! Input:  
-         grnfill           =>    pftcon%grnfill                               , & ! Input:  
-         perennial         =>    pftcon%perennial                             , & ! Input:  [integer (:)  ]  binary flag for perennial crop phenology (1=perennial, 0= not perennial) (added by O.Dombrowski)
+         grnfill           =>    pftcon%grnfill                                , & ! Input:  
+         perennial         =>    pftcon%perennial                              , & ! Input:  [integer  (:) ]  binary flag for perennial crop phenology (1=perennial, 0= not perennial) (added by O.Dombrowski)
+         covercrop         =>    pftcon%covercrop                              , & ! Input: covercrop flag 
+
          t_ref2m_min       =>    temperature_inst%t_ref2m_min_patch            , & ! Input:  [real(r8) (:) ]  daily minimum of average 2 m height surface air temperature (K)
          t10               =>    temperature_inst%t_a10_patch                  , & ! Input:  [real(r8) (:) ]  10-day running mean of the 2 m temperature (K)    
          a5tmin            =>    temperature_inst%t_a5min_patch                , & ! Input:  [real(r8) (:) ]  5-day running mean of min 2-m temperature         
@@ -2220,17 +2222,32 @@ contains
          onset_flag        =>    cnveg_state_inst%onset_flag_patch             , & ! Output: [real(r8) (:) ]  onset flag                                        
          offset_flag       =>    cnveg_state_inst%offset_flag_patch            , & ! Output: [real(r8) (:) ]  offset flag                                       
          onset_counter     =>    cnveg_state_inst%onset_counter_patch          , & ! Output: [real(r8) (:) ]  onset counter                                     
-         offset_counter    =>    cnveg_state_inst%offset_counter_patch         , & ! Output: [real(r8) (:) ]  offset counter                                            
+         offset_counter    =>    cnveg_state_inst%offset_counter_patch         , & ! Output: [real(r8) (:) ]  offset counter                                    
+         
          leafc_xfer        =>    cnveg_carbonstate_inst%leafc_xfer_patch       , & ! Output: [real(r8) (:) ]  (gC/m2)   leaf C transfer                           
 
          crop_seedc_to_leaf =>   cnveg_carbonflux_inst%crop_seedc_to_leaf_patch, & ! Output: [real(r8) (:) ]  (gC/m2/s) seed source to leaf
+         frootc_xfer        =>   cnveg_carbonstate_inst%frootc_xfer_patch      , & ! Input: [real(r8)  (:) ]  (gC/m2) fine root C transfer
+         frootn_xfer        =>   cnveg_nitrogenstate_inst%frootn_xfer_patch    , & ! Input: [real(r8)  (:) ]  (gN/m2) fine root N transfer
+         frootcn            =>    pftcon%frootcn                               , & ! Input:  fine root C:N (gC/gN)
 
          fert_counter      =>    cnveg_nitrogenflux_inst%fert_counter_patch    , & ! Output: [real(r8) (:) ]  >0 fertilize; <=0 not (seconds)                   
          leafn_xfer        =>    cnveg_nitrogenstate_inst%leafn_xfer_patch     , & ! Output: [real(r8) (:) ]  (gN/m2)   leaf N transfer                           
-         crop_seedn_to_leaf =>   cnveg_nitrogenflux_inst%crop_seedn_to_leaf_patch, & ! Output: [real(r8) (:) ]  (gN/m2/s) seed source to leaf
+         crop_seedn_to_leaf=>   cnveg_nitrogenflux_inst%crop_seedn_to_leaf_patch, & ! Output: [real(r8) (:) ]  (gN/m2/s) seed source to leaf
          cphase            =>    crop_inst%cphase_patch                        , & ! Output: [real(r8) (:)]   phenology phase
-         fert              =>    cnveg_nitrogenflux_inst%fert_patch              & ! Output: [real(r8) (:) ]  (gN/m2/s) fertilizer applied each timestep 
+         fert              =>    cnveg_nitrogenflux_inst%fert_patch            , & ! Output: [real(r8) (:) ]  (gN/m2/s) fertilizer applied each timestep 
+         lt50              =>    crop_inst%lt50_patch                   , & ! Output: [real(r8) (:)] the lethal temperature at which 50% of the individuals are damaged
+         wdd               =>    crop_inst%wdd_patch                    , & ! Output: [real(r8) (:)] winter wheat weighted cumulated degree days
+         rateh             =>    crop_inst%rateh_patch                  , & ! Output: [real(r8) (:)] increaseof tolerance cuased byhardening
+         rated             =>    crop_inst%rated_patch                  , & ! Output: [real(r8) (:)] loss of tolerance cause by dehardening
+         rates             =>    crop_inst%rates_patch                  , & ! Output: [real(r8) (:)] loss of tolerance caused by low tempeature
+         rater             =>    crop_inst%rater_patch                  , & ! Output: [real(r8) (:)] loss of tolerance caused by respiration under snow
+         fsurv             =>    crop_inst%fsurv_patch                  , & ! Output: [real(r8) (:)] winter wheat survival rate
+         accfsurv          =>    crop_inst%accfsurv_patch               , & ! Output: [real(r8) (:)] accumulated winter wheat survival rate
+         countfsurv        =>    crop_inst%countfsurv_patch              & ! Output: [real(r8) (:)] numbers of accumulated winter wheat survival rate
          )
+
+      !variables for coldtolerance subroutine modified after Lu (2017) (tboas)
 
       ! get time info
       dayspyr = get_days_per_year()
@@ -2251,164 +2268,207 @@ contains
          h = inhemi(p)
 
          if (perennial(ivt(p)) == 0._r8) then
-                 ! background litterfall and transfer rates; long growing season factor
-                 bglfr(p) = 0._r8 ! this value changes later in a crop's life cycle
-                 bgtr(p)  = 0._r8
-                 lgsf(p)  = 0._r8
+            ! background litterfall and transfer rates; long growing season factor
 
-                 ! ---------------------------------
-                 ! from AgroIBIS subroutine planting
-                 ! ---------------------------------
+            bglfr(p) = 0._r8 ! this value changes later in a crop's life cycle
+            bgtr(p)  = 0._r8
+            lgsf(p)  = 0._r8
 
-                 ! in order to allow a crop to be planted only once each year
-                 ! initialize cropplant = .false., but hold it = .true. through the end of the year
+            ! ---------------------------------
+            ! from AgroIBIS subroutine planting
+            ! ---------------------------------
 
-                 ! initialize other variables that are calculated for crops
-                 ! on an annual basis in cropresidue subroutine
+            ! in order to allow a crop to be planted only once each year
+            ! initialize cropplant = .false., but hold it = .true. through the end of the year
 
-                 if ( jday == jdayyrstart(h) .and. mcsec == 0 )then
+            ! initialize other variables that are calculated for crops
+            ! on an annual basis in cropresidue subroutine
 
-                    ! make sure variables aren't changed at beginning of the year
-                    ! for a crop that is currently planted, such as
-                    ! WINTER TEMPERATE CEREAL = winter (wheat + barley + rye)
-                    ! represented here by the winter wheat pft
+            if ( jday == jdayyrstart(h) .and. mcsec == 0 )then
 
-                    if (.not. croplive(p))  then
-                       cropplant(p) = .false.
-                       idop(p)      = NOT_Planted
+                ! make sure variables aren't changed at beginning of the year
+                ! for a crop that is currently planted, such as
+                ! WINTER TEMPERATE CEREAL = winter (wheat + barley + rye)
+                ! represented here by the winter wheat pft
 
-                       ! keep next for continuous, annual winter temperate cereal crop;
-                       ! if we removed elseif,
-                       ! winter cereal grown continuously would amount to a cereal/fallow
-                       ! rotation because cereal would only be planted every other year
 
-                    else if (croplive(p) .and. (ivt(p) == nwwheat .or. ivt(p) == nirrig_wwheat)) then
-                       cropplant(p) = .false.
-                       !           else ! not possible to have croplive and ivt==cornORsoy? (slevis)
-                    end if
+                if (.not. croplive(p))  then
+                  cropplant(p) = .false.
+                  idop(p)      = NOT_Planted
 
-                 end if
+                  ! keep next for continuous, annual winter temperate cereal crop;
+                  ! if we removed elseif,
+                  ! winter cereal grown continuously would amount to a cereal/fallow
+                  ! rotation because cereal would only be planted every other year
+                  ! (tboas) here, this only prevents the crop to be killed on the
+                  ! first day of a new year and still results in a cereal-fallow
+                  ! rotation
 
-                 if ( (.not. croplive(p)) .and. (.not. cropplant(p)) ) then
+                else if (croplive(p) .and. (ivt(p) == nwwheat .or. ivt(p) == nirrig_wwheat .or. &
+                                            ivt(p) == ncovercrop_1 .or. ivt(p) == ncovercrop_2 .or. &
+                                            ivt(p) == nwbarley  .or. ivt(p) == nirrig_wbarley  .or. &
+                                            ivt(p) == nrapeseed  .or. ivt(p) == nirrig_rapeseed)) then
+                  cropplant(p) = .true.
+                  !           else ! not possible to have croplive and ivt==cornORsoy? (slevis) 
+                end if
 
-                    ! gdd needed for * chosen crop and a likely hybrid (for that region) *
-                    ! to reach full physiological maturity
+            end if
 
-                    ! based on accumulated seasonal average growing degree days from
-                    ! April 1 - Sept 30 (inclusive)
-                    ! for corn and soybeans in the United States -
-                    ! decided upon by what the typical average growing season length is
-                    ! and the gdd needed to reach maturity in those regions
+                !(tboas) try to avaoid cereral/fallow rotation
+            if (.not. croplive(p) .and. jday >= 170._r8 .and. &
+                (ivt(p) == nwwheat .or. ivt(p) == nirrig_wwheat)) then
+                cropplant(p) = .false.
+                idop(p)      = NOT_Planted
+            end if
 
-                    ! first choice is used for spring temperate cereal and/or soybeans and maize
+            if ( (.not. croplive(p)) .and. (.not. cropplant(p)) ) then
 
-                    ! slevis: ibis reads xinpdate in io.f from control.crops.nc variable name 'plantdate'
-                    !         According to Chris Kucharik, the dataset of
-                    !         xinpdate was generated from a previous model run at 0.5 deg resolution
+                ! gdd needed for * chosen crop and a likely hybrid (for that region) *
+                ! to reach full physiological maturity
 
-                    ! winter temperate cereal : use gdd0 as a limit to plant winter cereal
+                ! based on accumulated seasonal average growing degree days from
+                ! April 1 - Sept 30 (inclusive)
+                ! for corn and soybeans in the United States -
+                ! decided upon by what the typical average growing season length is
+                ! and the gdd needed to reach maturity in those regions
 
-                    if (ivt(p) == nwwheat .or. ivt(p) == nirrig_wwheat) then
+                ! first choice is used for spring temperate cereal and/or soybeans and maize
 
-                       ! add check to only plant winter cereal after other crops (soybean, maize)
-                       ! have been harvested
+                ! slevis: ibis reads xinpdate in io.f from control.crops.nc variable name 'plantdate'
+                !         According to Chris Kucharik, the dataset of
+                !         xinpdate was generated from a previous model run at 0.5 deg resolution
 
-                       ! *** remember order of planting is crucial - in terms of which crops you want
-                       ! to be grown in what order ***
+                ! winter temperate cereal : use gdd0 as a limit to plant winter cereal
 
-                       ! in this case, corn or soybeans are assumed to be planted before
-                       ! cereal would be in any particular year that both patches are allowed
-                       ! to grow in the same grid cell (e.g., double-cropping)
+                if (ivt(p) == nwwheat .or. ivt(p) == nirrig_wwheat  .or. &
+                    ivt(p) == ncovercrop_1 .or. ivt(p) == ncovercrop_2 .or. &
+                    ivt(p) == nwbarley  .or. ivt(p) == nirrig_wbarley  .or. &
+                    ivt(p) == nrapeseed  .or. ivt(p) == nirrig_rapeseed)  then
 
-                       ! slevis: harvdate below needs cropplant(p) above to be cropplant(p,ivt(p))
-                       !         where ivt(p) has rotated to winter cereal because
-                       !         cropplant through the end of the year for a harvested crop.
-                       !         Also harvdate(p) should be harvdate(p,ivt(p)) and should be
-                       !         updated on Jan 1st instead of at harvest (slevis)
-                       if (a5tmin(p)             /= spval                  .and. &
+                    ! add check to only plant winter cereal after other crops (soybean, maize)
+                    ! have been harvested
+
+                    ! *** remember order of planting is crucial - in terms of which crops you want
+                    ! to be grown in what order ***
+
+                    ! in this case, corn or soybeans are assumed to be planted before
+                    ! cereal would be in any particular year that both patches are allowed
+                    ! to grow in the same grid cell (e.g., double-cropping)
+
+                    ! slevis: harvdate below needs cropplant(p) above to be cropplant(p,ivt(p))
+                    !         where ivt(p) has rotated to winter cereal because
+                    !         cropplant through the end of the year for a harvested crop.
+                    !         Also harvdate(p) should be harvdate(p,ivt(p)) and should be
+                    !         updated on Jan 1st instead of at harvest (slevis)
+                    if (a5tmin(p)             /= spval                  .and. &
                             a5tmin(p)             <= minplanttemp(ivt(p))   .and. &
                             jday                  >= minplantjday(ivt(p),h) .and. &
                             (gdd020(p)            /= spval                  .and. &
                             gdd020(p)             >= gddmin(ivt(p)))) then
+                        write (iulog,*) 'planting winter crop'
+                        cumvd(p)       = 0._r8
+                        hdidx(p)       = 0._r8
+                        vf(p)          = 0._r8
+                    !coldtolerance parameters modified after Lu (2017) (tboas)
+                        lt50(p)        = -5._r8
+                        wdd(p)         = 0._r8
+                        rateh(p)       = 0._r8
+                        rated(p)       = 0._r8
+                        rater(p)       = 0._r8
+                        rates(p)       = 0._r8
+                        fsurv(p)       = 1._r8
+                        accfsurv(p)    = 1._r8
+                        countfsurv(p)  = 1._r8
+                        croplive(p)    = .true.
+                        cropplant(p)   = .true.
+                        idop(p)        = jday
+                        harvdate(p)    = NOT_Harvested
+                        gddmaturity(p) = hybgdd(ivt(p))
+                        leafc_xfer(p)  = initial_seed_at_planting
+                        leafn_xfer(p)  = leafc_xfer(p) / leafcn(ivt(p)) ! with onset
+                        frootc_xfer(p) = 0.1_r8
+                        frootn_xfer(p)  = frootc_xfer(p) / frootcn(ivt(p)) ! with onset
+                        crop_seedc_to_leaf(p) = leafc_xfer(p)/dt + frootc_xfer(p)/dt
+                        crop_seedn_to_leaf(p) = leafn_xfer(p)/dt + frootn_xfer(p)/dt
 
-                          cumvd(p)       = 0._r8
-                          hdidx(p)       = 0._r8
-                          vf(p)          = 0._r8
-                          croplive(p)    = .true.
-                          cropplant(p)   = .true.
-                          idop(p)        = jday
-                          harvdate(p)    = NOT_Harvested
-                          gddmaturity(p) = hybgdd(ivt(p))
-                          leafc_xfer(p)  = initial_seed_at_planting
-                          leafn_xfer(p)  = leafc_xfer(p) / leafcn(ivt(p)) ! with onset
-                          crop_seedc_to_leaf(p) = leafc_xfer(p)/dt
-                          crop_seedn_to_leaf(p) = leafn_xfer(p)/dt
 
-                          ! because leafc_xfer is set above rather than incremneted through the normal process, must also set its isotope
-                          ! pools here.  use totvegc_patch as the closest analogue if nonzero, and use initial value otherwise
-                          if (use_c13) then
-                             if ( cnveg_carbonstate_inst%totvegc_patch(p) .gt. 0._r8) then
+                        ! because leafc_xfer is set above rather than incremneted through the normal process, must also set its isotope
+                        ! pools here.  use totvegc_patch as the closest analogue if nonzero, and use initial value otherwise
+                        if (use_c13) then
+                            if ( cnveg_carbonstate_inst%totvegc_patch(p) .gt. 0._r8) then
                                 c13_cnveg_carbonstate_inst%leafc_xfer_patch(p) = leafc_xfer(p) * &
-                                     c13_cnveg_carbonstate_inst%totvegc_patch(p) / cnveg_carbonstate_inst%totvegc_patch(p)
-                             else
+                                    c13_cnveg_carbonstate_inst%totvegc_patch(p) / cnveg_carbonstate_inst%totvegc_patch(p)
+                            else
                                 c13_cnveg_carbonstate_inst%leafc_xfer_patch(p) = leafc_xfer(p) * c13ratio
-                             endif
-                          endif
-                          if (use_c14) then
-                             if ( cnveg_carbonstate_inst%totvegc_patch(p) .gt. 0._r8) then
+                            endif
+                        endif
+                        if (use_c14) then
+                            if ( cnveg_carbonstate_inst%totvegc_patch(p) .gt. 0._r8) then
                                 c14_cnveg_carbonstate_inst%leafc_xfer_patch(p) = leafc_xfer(p) * &
-                                     c14_cnveg_carbonstate_inst%totvegc_patch(p) / cnveg_carbonstate_inst%totvegc_patch(p)
-                             else
+                                    c14_cnveg_carbonstate_inst%totvegc_patch(p) / cnveg_carbonstate_inst%totvegc_patch(p)
+                            else
                                 c14_cnveg_carbonstate_inst%leafc_xfer_patch(p) = leafc_xfer(p) * c14ratio
-                             endif
-                          endif
+                            endif
+                        endif
 
-                          ! latest possible date to plant winter cereal and after all other 
-                          ! crops were harvested for that year
+                        ! latest possible date to plant winter cereal and after all other 
+                        ! crops were harvested for that year
 
-                       else if (jday       >=  maxplantjday(ivt(p),h) .and. &
+                    else if (jday       >=  maxplantjday(ivt(p),h) .and. &
                             gdd020(p)  /= spval                   .and. &
                             gdd020(p)  >= gddmin(ivt(p))) then
+                        write (iulog,*) 'planting winter crop'
+                        cumvd(p)       = 0._r8
+                        hdidx(p)       = 0._r8
+                        vf(p)          = 0._r8
+                        ! coldtolerance mod. after Lu (2017) (tboas)
+                        rateh(p)       = 0._r8
+                        rated(p)       = 0._r8
+                        rater(p)       = 0._r8
+                        rates(p)       = 0._r8
+                        fsurv(p)       = 1._r8
+                        accfsurv(p)    = 1._r8
+                        countfsurv(p)  = 1._r8
+                        lt50(p)        = -5._r8
+                        wdd(p)         = 0._r8
+                        croplive(p)    = .true.
+                        cropplant(p)   = .true.
+                        idop(p)        = jday
+                        harvdate(p)    = NOT_Harvested
+                        gddmaturity(p) = hybgdd(ivt(p))
+                        leafc_xfer(p)  = initial_seed_at_planting
+                        leafn_xfer(p)  = leafc_xfer(p) / leafcn(ivt(p)) ! with onset
+                        frootc_xfer(p) = 0.1_r8
+                        frootn_xfer(p)  = frootc_xfer(p) / frootcn(ivt(p)) ! with onset
+                        crop_seedc_to_leaf(p) = leafc_xfer(p)/dt + frootc_xfer(p)/dt
+                        crop_seedn_to_leaf(p) = leafn_xfer(p)/dt + frootn_xfer(p)/dt
 
-                          cumvd(p)       = 0._r8
-                          hdidx(p)       = 0._r8
-                          vf(p)          = 0._r8
-                          croplive(p)    = .true.
-                          cropplant(p)   = .true.
-                          idop(p)        = jday
-                          harvdate(p)    = NOT_Harvested
-                          gddmaturity(p) = hybgdd(ivt(p))
-                          leafc_xfer(p)  = initial_seed_at_planting
-                          leafn_xfer(p)  = leafc_xfer(p) / leafcn(ivt(p)) ! with onset
-                          crop_seedc_to_leaf(p) = leafc_xfer(p)/dt
-                          crop_seedn_to_leaf(p) = leafn_xfer(p)/dt
-
-                          ! because leafc_xfer is set above rather than incremneted through the normal process, must also set its isotope
-                          ! pools here.  use totvegc_patch as the closest analogue if nonzero, and use initial value otherwise
-                          if (use_c13) then
-                             if ( cnveg_carbonstate_inst%totvegc_patch(p) .gt. 0._r8) then
+                        ! because leafc_xfer is set above rather than incremneted through the normal process, must also set its isotope
+                        ! pools here.  use totvegc_patch as the closest analogue if nonzero, and use initial value otherwise
+                        if (use_c13) then
+                            if ( cnveg_carbonstate_inst%totvegc_patch(p) .gt. 0._r8) then
                                 c13_cnveg_carbonstate_inst%leafc_xfer_patch(p) = leafc_xfer(p) * &
-                                     c13_cnveg_carbonstate_inst%totvegc_patch(p) / cnveg_carbonstate_inst%totvegc_patch(p)
-                             else
+                                    c13_cnveg_carbonstate_inst%totvegc_patch(p) / cnveg_carbonstate_inst%totvegc_patch(p)
+                            else
                                 c13_cnveg_carbonstate_inst%leafc_xfer_patch(p) = leafc_xfer(p) * c13ratio
-                             endif
-                          endif
-                          if (use_c14) then
-                             if ( cnveg_carbonstate_inst%totvegc_patch(p) .gt. 0._r8) then
+                            endif
+                        endif
+                        if (use_c14) then
+                            if ( cnveg_carbonstate_inst%totvegc_patch(p) .gt. 0._r8) then
                                 c14_cnveg_carbonstate_inst%leafc_xfer_patch(p) = leafc_xfer(p) * &
-                                     c14_cnveg_carbonstate_inst%totvegc_patch(p) / cnveg_carbonstate_inst%totvegc_patch(p)
-                             else
+                                    c14_cnveg_carbonstate_inst%totvegc_patch(p) / cnveg_carbonstate_inst%totvegc_patch(p)
+                            else
                                 c14_cnveg_carbonstate_inst%leafc_xfer_patch(p) = leafc_xfer(p) * c14ratio
-                             endif
-                          endif
-                       else
-                          gddmaturity(p) = 0._r8
-                       end if
+                            endif
+                        endif
+                    else
+                        gddmaturity(p) = 0._r8
+                    end if
 
                     else ! not winter cereal... slevis: added distinction between NH and SH
-                       ! slevis: The idea is that jday will equal idop sooner or later in the year
-                       !         while the gdd part is either true or false for the year.
-                       if (t10(p) /= spval.and. a10tmin(p) /= spval   .and. &
+                    ! slevis: The idea is that jday will equal idop sooner or later in the year
+                    !         while the gdd part is either true or false for the year.
+                    if (t10(p) /= spval.and. a10tmin(p) /= spval   .and. &
                             t10(p)     > planttemp(ivt(p))             .and. &
                             a10tmin(p) > minplanttemp(ivt(p))          .and. &
                             jday       >= minplantjday(ivt(p),h)       .and. &
@@ -2417,318 +2477,370 @@ contains
                             gdd820(p) /= spval                         .and. &
                             gdd820(p) >= gddmin(ivt(p))) then
 
-                          ! impose limit on growing season length needed
-                          ! for crop maturity - for cold weather constraints
-                          croplive(p)  = .true.
-                          cropplant(p) = .true.
-                          idop(p)      = jday
-                          harvdate(p)  = NOT_Harvested
+                        ! impose limit on growing season length needed
+                        ! for crop maturity - for cold weather constraints
+                        croplive(p)  = .true.
+                        cropplant(p) = .true.
+                        idop(p)      = jday
+                        harvdate(p)  = NOT_Harvested
 
-                          ! go a specified amount of time before/after
-                          ! climatological date
-                          if (ivt(p) == ntmp_soybean .or. ivt(p) == nirrig_tmp_soybean .or. &
-                               ivt(p) == ntrp_soybean .or. ivt(p) == nirrig_trp_soybean) then
-                             gddmaturity(p) = min(gdd1020(p), hybgdd(ivt(p)))
-                          end if
-                          if (ivt(p) == ntmp_corn .or. ivt(p) == nirrig_tmp_corn .or. &
-                              ivt(p) == ntrp_corn .or. ivt(p) == nirrig_trp_corn .or. &
-                              ivt(p) == nsugarcane .or. ivt(p) == nirrig_sugarcane) then
-                             gddmaturity(p) = max(950._r8, min(gdd820(p)*0.85_r8, hybgdd(ivt(p))))
-                             gddmaturity(p) = max(950._r8, min(gddmaturity(p)+150._r8, 1850._r8))
-                          end if
-                          if (ivt(p) == nswheat .or. ivt(p) == nirrig_swheat .or. &
-                              ivt(p) == ncotton .or. ivt(p) == nirrig_cotton .or. &
-                              ivt(p) == nrice   .or. ivt(p) == nirrig_rice) then
-                             gddmaturity(p) = min(gdd020(p), hybgdd(ivt(p)))
-                          end if
+                        ! go a specified amount of time before/after
+                        ! climatological date
+                        !if (ivt(p) == ntmp_soybean .or. ivt(p) == nirrig_tmp_soybean .or. &
+                        !     ivt(p) == ntrp_soybean .or. ivt(p) == nirrig_trp_soybean) then
+                        !   gddmaturity(p) = min(gdd1020(p), hybgdd(ivt(p)))
+                        !end if
+                        if (ivt(p) == ntmp_corn .or. ivt(p) == nirrig_tmp_corn .or. &
+                            ivt(p) == ntrp_corn .or. ivt(p) == nirrig_trp_corn .or. &
+                            ivt(p) == nsugarcane .or. ivt(p) == nirrig_sugarcane) then
+                            gddmaturity(p) = max(950._r8, min(gdd820(p)*0.85_r8, hybgdd(ivt(p))))
+                            gddmaturity(p) = max(950._r8, min(gddmaturity(p)+150._r8, 1850._r8))
+                        end if
+                        if (ivt(p) == nswheat .or. ivt(p) == nirrig_swheat .or. &
+                            ivt(p) == nsugarbeet .or. ivt(p) == nirrig_sugarbeet .or. &
+                            ivt(p) == npotatoes .or. ivt(p) == nirrig_potatoes .or. &
+                            ivt(p) == ncotton .or. ivt(p) == nirrig_cotton .or. &
+                            ivt(p) == nrice   .or. ivt(p) == nirrig_rice) then
+                            gddmaturity(p) = min(gdd020(p), hybgdd(ivt(p)))
+                        end if
 
-                          leafc_xfer(p)  = initial_seed_at_planting
-                          leafn_xfer(p) = leafc_xfer(p) / leafcn(ivt(p)) ! with onset
-                          crop_seedc_to_leaf(p) = leafc_xfer(p)/dt
-                          crop_seedn_to_leaf(p) = leafn_xfer(p)/dt
+                        leafc_xfer(p)  = initial_seed_at_planting
+                        leafn_xfer(p) = leafc_xfer(p) / leafcn(ivt(p)) ! with onset
+                        crop_seedc_to_leaf(p) = leafc_xfer(p)/dt
+                        crop_seedn_to_leaf(p) = leafn_xfer(p)/dt
 
-                          ! because leafc_xfer is set above rather than incremneted through the normal process, must also set its isotope
-                          ! pools here.  use totvegc_patch as the closest analogue if nonzero, and use initial value otherwise
-                          if (use_c13) then
-                             if ( cnveg_carbonstate_inst%totvegc_patch(p) .gt. 0._r8) then
+                        ! because leafc_xfer is set above rather than incremneted through the normal process, must also set its isotope
+                        ! pools here.  use totvegc_patch as the closest analogue if nonzero, and use initial value otherwise
+                        if (use_c13) then
+                            if ( cnveg_carbonstate_inst%totvegc_patch(p) .gt. 0._r8) then
                                 c13_cnveg_carbonstate_inst%leafc_xfer_patch(p) = leafc_xfer(p) * &
-                                     c13_cnveg_carbonstate_inst%totvegc_patch(p) / cnveg_carbonstate_inst%totvegc_patch(p)
-                             else
-                                c13_cnveg_carbonstate_inst%leafc_xfer_patch(p) = leafc_xfer(p) * c13ratio
-                             endif
-                          endif
-                          if (use_c14) then
-                             if ( cnveg_carbonstate_inst%totvegc_patch(p) .gt. 0._r8) then
-                                c14_cnveg_carbonstate_inst%leafc_xfer_patch(p) = leafc_xfer(p) * &
-                                     c14_cnveg_carbonstate_inst%totvegc_patch(p) / cnveg_carbonstate_inst%totvegc_patch(p)
-                             else
-                                c14_cnveg_carbonstate_inst%leafc_xfer_patch(p) = leafc_xfer(p) * c14ratio
-                             endif
-                          endif
-
-
-                          ! If hit the max planting julian day -- go ahead and plant
-                       else if (jday == maxplantjday(ivt(p),h) .and. gdd820(p) > 0._r8 .and. &
-                            gdd820(p) /= spval ) then
-                          croplive(p)  = .true.
-                          cropplant(p) = .true.
-                          idop(p)      = jday
-                          harvdate(p)  = NOT_Harvested
-
-                          if (ivt(p) == ntmp_soybean .or. ivt(p) == nirrig_tmp_soybean .or. &
-                              ivt(p) == ntrp_soybean .or. ivt(p) == nirrig_trp_soybean) then
-                             gddmaturity(p) = min(gdd1020(p), hybgdd(ivt(p)))
-                          end if
-                          if (ivt(p) == ntmp_corn .or. ivt(p) == nirrig_tmp_corn .or. &
-                              ivt(p) == ntrp_corn .or. ivt(p) == nirrig_trp_corn .or. &
-                              ivt(p) == nsugarcane .or. ivt(p) == nirrig_sugarcane) then
-                             gddmaturity(p) = max(950._r8, min(gdd820(p)*0.85_r8, hybgdd(ivt(p))))
-                          end if
-                          if (ivt(p) == nswheat .or. ivt(p) == nirrig_swheat .or. &
-                              ivt(p) == ncotton .or. ivt(p) == nirrig_cotton .or. &
-                              ivt(p) == nrice   .or. ivt(p) == nirrig_rice) then
-                             gddmaturity(p) = min(gdd020(p), hybgdd(ivt(p)))
-                          end if
-
-                          leafc_xfer(p)  = initial_seed_at_planting
-                          leafn_xfer(p) = leafc_xfer(p) / leafcn(ivt(p)) ! with onset
-                          crop_seedc_to_leaf(p) = leafc_xfer(p)/dt
-                          crop_seedn_to_leaf(p) = leafn_xfer(p)/dt
-
-                          ! because leafc_xfer is set above rather than incremneted through the normal process, must also set its isotope
-                          ! pools here.  use totvegc_patch as the closest analogue if nonzero, and use initial value otherwise
-                          if (use_c13) then
-                             if ( cnveg_carbonstate_inst%totvegc_patch(p) .gt. 0._r8) then
-                                c13_cnveg_carbonstate_inst%leafc_xfer_patch(p) = leafc_xfer(p) * &
-                                     c13_cnveg_carbonstate_inst%totvegc_patch(p) / cnveg_carbonstate_inst%totvegc_patch(p)
-                             else
-                                c13_cnveg_carbonstate_inst%leafc_xfer_patch(p) = leafc_xfer(p) * c13ratio
-                             endif
-                          endif
-                          if (use_c14) then
-                             if ( cnveg_carbonstate_inst%totvegc_patch(p) .gt. 0._r8) then
-                                c14_cnveg_carbonstate_inst%leafc_xfer_patch(p) = leafc_xfer(p) * &
-                                     c14_cnveg_carbonstate_inst%totvegc_patch(p) / cnveg_carbonstate_inst%totvegc_patch(p)
-                             else
-                                c14_cnveg_carbonstate_inst%leafc_xfer_patch(p) = leafc_xfer(p) * c14ratio
-                             endif
-                          endif
-
-                       else
-                          gddmaturity(p) = 0._r8
-                       end if
-                    end if ! crop patch distinction
-
-                    ! crop phenology (gdd thresholds) controlled by gdd needed for
-                    ! maturity (physiological) which is based on the average gdd
-                    ! accumulation and hybrids in United States from April 1 - Sept 30
-
-                    ! calculate threshold from phase 1 to phase 2:
-                    ! threshold for attaining leaf emergence (based on fraction of
-                    ! gdd(i) -- climatological average)
-                    ! Hayhoe and Dwyer, 1990, Can. J. Soil Sci 70:493-497
-                    ! Carlson and Gage, 1989, Agric. For. Met., 45: 313-324
-                    ! J.T. Ritchie, 1991: Modeling Plant and Soil systems
-
-                    huileaf(p) = lfemerg(ivt(p)) * gddmaturity(p) ! 3-7% in cereal
-
-                    ! calculate threshhold from phase 2 to phase 3:
-                    ! from leaf emergence to beginning of grain-fill period
-                    ! this hypothetically occurs at the end of tassling, not the beginning
-                    ! tassel initiation typically begins at 0.5-0.55 * gddmaturity
-
-                    ! calculate linear relationship between huigrain fraction and relative
-                    ! maturity rating for maize
-
-                    if (ivt(p) == ntmp_corn .or. ivt(p) == nirrig_tmp_corn .or. &
-                        ivt(p) == ntrp_corn .or. ivt(p) == nirrig_trp_corn .or. &
-                        ivt(p) == nsugarcane .or. ivt(p) == nirrig_sugarcane) then
-                       ! the following estimation of crmcorn from gddmaturity is based on a linear
-                       ! regression using data from Pioneer-brand corn hybrids (Kucharik, 2003,
-                       ! Earth Interactions 7:1-33: fig. 2)
-                       crmcorn = max(73._r8, min(135._r8, (gddmaturity(p)+ 53.683_r8)/13.882_r8))
-
-                       ! the following adjustment of grnfill based on crmcorn is based on a tuning
-                       ! of Agro-IBIS to give reasonable results for max LAI and the seasonal
-                       ! progression of LAI growth (pers. comm. C. Kucharik June 10, 2010)
-                       huigrain(p) = -0.002_r8  * (crmcorn - 73._r8) + grnfill(ivt(p))
-
-                       huigrain(p) = min(max(huigrain(p), grnfill(ivt(p))-0.1_r8), grnfill(ivt(p)))
-                       huigrain(p) = huigrain(p) * gddmaturity(p)     ! Cabelguenne et
-                    else
-                       huigrain(p) = grnfill(ivt(p)) * gddmaturity(p) ! al. 1999
-                    end if
-
-                 end if ! crop not live nor planted
-
-                 ! ----------------------------------
-                 ! from AgroIBIS subroutine phenocrop
-                 ! ----------------------------------
-
-                 ! all of the phenology changes are based on the total number of gdd needed
-                 ! to change to the next phase - based on fractions of the total gdd typical
-                 ! for  that region based on the April 1 - Sept 30 window of development
-
-                 ! crop phenology (gdd thresholds) controlled by gdd needed for
-                 ! maturity (physiological) which is based on the average gdd
-                 ! accumulation and hybrids in United States from April 1 - Sept 30
-
-                 ! Phase 1: Planting to leaf emergence (now in CNAllocation)
-                 ! Phase 2: Leaf emergence to beginning of grain fill (general LAI accumulation)
-                 ! Phase 3: Grain fill to physiological maturity and harvest (LAI decline)
-                 ! Harvest: if gdd past grain fill initiation exceeds limit
-                 ! or number of days past planting reaches a maximum, the crop has
-                 ! reached physiological maturity and plant is harvested;
-                 ! crop could be live or dead at this stage - these limits
-                 ! could lead to reaching physiological maturity or determining
-                 ! a harvest date for a crop killed by an early frost (see next comments)
-                 ! --- --- ---
-                 ! keeping comments without the code (slevis):
-                 ! if minimum temperature, t_ref2m_min <= freeze kill threshold, tkill
-                 ! for 3 consecutive days and lai is above a minimum,
-                 ! plant will be damaged/killed. This function is more for spring freeze events
-                 ! or for early fall freeze events
-
-                 ! spring temperate cereal is affected by this, winter cereal kill function
-                 ! is determined in crops.f - is a more elaborate function of
-                 ! cold hardening of the plant
-
-                 ! currently simulates too many grid cells killed by freezing temperatures
-
-                 ! removed on March 12 2002 - C. Kucharik
-                 ! until it can be a bit more refined, or used at a smaller scale.
-                 ! we really have no way of validating this routine
-                 ! too difficult to implement on 0.5 degree scale grid cells
-                 ! --- --- ---
-
-                 onset_flag(p)  = 0._r8 ! CN terminology to trigger certain
-                 offset_flag(p) = 0._r8 ! carbon and nitrogen transfers
-
-                 if (croplive(p)) then
-                    cphase(p) = 1._r8
-
-                    ! call vernalization if winter temperate cereal planted, living, and the
-                    ! vernalization factor is not 1;
-                    ! vf affects the calculation of gddtsoi & gddplant
-
-                    if (t_ref2m_min(p) < 1.e30_r8 .and. vf(p) /= 1._r8 .and. &
-                       (ivt(p) == nwwheat .or. ivt(p) == nirrig_wwheat)) then
-                       call vernalization(p, &
-                            canopystate_inst, temperature_inst, waterstate_inst, cnveg_state_inst, &
-                            crop_inst)
-                    end if
-
-                    ! days past planting may determine harvest
-
-                    if (jday >= idop(p)) then
-                       idpp = jday - idop(p)
-                    else
-                       idpp = int(dayspyr) + jday - idop(p)
-                    end if
-
-                    ! onset_counter initialized to zero when .not. croplive
-                    ! offset_counter relevant only at time step of harvest
-
-                    onset_counter(p) = onset_counter(p) - dt
-
-                    ! enter phase 2 onset for one time step:
-                    ! transfer seed carbon to leaf emergence
-
-                    if (peaklai(p) >= 1) then
-                       hui(p) = max(hui(p),huigrain(p))
-                    endif
-
-                    if (leafout(p) >= huileaf(p) .and. hui(p) < huigrain(p) .and. idpp < mxmat(ivt(p))) then
-                       cphase(p) = 2._r8
-                       if (abs(onset_counter(p)) > 1.e-6_r8) then
-                          onset_flag(p)    = 1._r8
-                          onset_counter(p) = dt
-                            fert_counter(p)  = ndays_on * secspday
-                            if (ndays_on .gt. 0) then
-                               fert(p) = (manunitro(ivt(p)) * 1000._r8 + fertnitro(p))/ fert_counter(p)
+                                    c13_cnveg_carbonstate_inst%totvegc_patch(p) / cnveg_carbonstate_inst%totvegc_patch(p)
                             else
-                               fert(p) = 0._r8
-                            end if
-                       else
-                          ! this ensures no re-entry to onset of phase2
-                          ! b/c onset_counter(p) = onset_counter(p) - dt
-                          ! at every time step
+                                c13_cnveg_carbonstate_inst%leafc_xfer_patch(p) = leafc_xfer(p) * c13ratio
+                            endif
+                        endif
+                        if (use_c14) then
+                            if ( cnveg_carbonstate_inst%totvegc_patch(p) .gt. 0._r8) then
+                                c14_cnveg_carbonstate_inst%leafc_xfer_patch(p) = leafc_xfer(p) * &
+                                    c14_cnveg_carbonstate_inst%totvegc_patch(p) / cnveg_carbonstate_inst%totvegc_patch(p)
+                            else
+                                c14_cnveg_carbonstate_inst%leafc_xfer_patch(p) = leafc_xfer(p) * c14ratio
+                            endif
+                        endif
 
-                          onset_counter(p) = dt
-                       end if
 
-                       ! enter harvest for one time step:
-                       ! - transfer live biomass to litter and to crop yield
-                       ! - send xsmrpool to the atmosphere
-                       ! if onset and harvest needed to last longer than one timestep
-                       ! the onset_counter would change from dt and you'd need to make
-                       ! changes to the offset subroutine below
+                        ! If hit the max planting julian day -- go ahead and plant
+                    else if (jday == maxplantjday(ivt(p),h) .and. gdd820(p) > 0._r8 .and. &
+                            gdd820(p) /= spval ) then
+                        croplive(p)  = .true.
+                        cropplant(p) = .true.
+                        idop(p)      = jday
+                        harvdate(p)  = NOT_Harvested
 
-                    else if (hui(p) >= gddmaturity(p) .or. idpp >= mxmat(ivt(p))) then
-                       if (harvdate(p) >= NOT_Harvested) harvdate(p) = jday
-                       croplive(p) = .false.     ! no re-entry in greater if-block
-                       cphase(p) = 4._r8
-                       if (tlai(p) > 0._r8) then ! plant had emerged before harvest
-                          offset_flag(p) = 1._r8
-                          offset_counter(p) = dt
-                       else                      ! plant never emerged from the ground
-                          ! Revert planting transfers; this will replenish the crop seed deficit.
-                          ! We subtract from any existing value in crop_seedc_to_leaf /
-                          ! crop_seedn_to_leaf in the unlikely event that we enter this block of
-                          ! code in the same time step where the planting transfer originally
-                          ! occurred.
-                          crop_seedc_to_leaf(p) = crop_seedc_to_leaf(p) - leafc_xfer(p)/dt
-                          crop_seedn_to_leaf(p) = crop_seedn_to_leaf(p) - leafn_xfer(p)/dt
-                          leafc_xfer(p) = 0._r8
-                          leafn_xfer(p) = leafc_xfer(p) / leafcn(ivt(p))
-                          if (use_c13) then
-                             c13_cnveg_carbonstate_inst%leafc_xfer_patch(p) = 0._r8
-                          endif
-                          if (use_c14) then
-                             c14_cnveg_carbonstate_inst%leafc_xfer_patch(p) = 0._r8
-                          endif
+                        if (ivt(p) == ntmp_soybean .or. ivt(p) == nirrig_tmp_soybean) then !.or. &
+                            !ivt(p) == ntrp_soybean .or. ivt(p) == nirrig_trp_soybean) then
+                            gddmaturity(p) = min(gdd1020(p), hybgdd(ivt(p)))
+                        end if
+                        if (ivt(p) == ntmp_corn .or. ivt(p) == nirrig_tmp_corn .or. &
+                            ivt(p) == ntrp_corn .or. ivt(p) == nirrig_trp_corn .or. &
+                            ivt(p) == nsugarcane .or. ivt(p) == nirrig_sugarcane) then
+                            gddmaturity(p) = max(950._r8, min(gdd820(p)*0.85_r8, hybgdd(ivt(p))))
+                        end if
+                        if (ivt(p) == nswheat .or. ivt(p) == nirrig_swheat .or. &
+                            ivt(p) == nsugarbeet .or. ivt(p) == nirrig_sugarbeet .or. &
+                            ivt(p) == npotatoes .or. ivt(p) == nirrig_potatoes .or. &
+                            ivt(p) == ncotton .or. ivt(p) == nirrig_cotton .or. &
+                            ivt(p) == nrice   .or. ivt(p) == nirrig_rice) then
+                            gddmaturity(p) = min(gdd020(p), hybgdd(ivt(p)))
+                        end if
 
-                       end if
+                        leafc_xfer(p)  = initial_seed_at_planting
+                        leafn_xfer(p) = leafc_xfer(p) / leafcn(ivt(p)) ! with onset
+                        crop_seedc_to_leaf(p) = leafc_xfer(p)/dt
+                        crop_seedn_to_leaf(p) = leafn_xfer(p)/dt
 
-                       ! enter phase 3 while previous criteria fail and next is true;
-                       ! in terms of order, phase 3 occurs before harvest, but when
-                       ! harvest *can* occur, we want it to have first priority.
-                       ! AgroIBIS uses a complex formula for lai decline.
-                       ! Use CN's simple formula at least as a place holder (slevis)
 
-                    else if (hui(p) >= huigrain(p)) then
-                       cphase(p) = 3._r8
-                       bglfr(p) = 1._r8/(leaf_long(ivt(p))*dayspyr*secspday)
+                        ! because leafc_xfer is set above rather than incremneted through the normal process, must also set its isotope
+                        ! pools here.  use totvegc_patch as the closest analogue if nonzero, and use initial value otherwise
+                        if (use_c13) then
+                            if ( cnveg_carbonstate_inst%totvegc_patch(p) .gt. 0._r8) then
+                                c13_cnveg_carbonstate_inst%leafc_xfer_patch(p) = leafc_xfer(p) * &
+                                    c13_cnveg_carbonstate_inst%totvegc_patch(p) / cnveg_carbonstate_inst%totvegc_patch(p)
+                            else
+                                c13_cnveg_carbonstate_inst%leafc_xfer_patch(p) = leafc_xfer(p) * c13ratio
+                            endif
+                        endif
+                        if (use_c14) then
+                            if ( cnveg_carbonstate_inst%totvegc_patch(p) .gt. 0._r8) then
+                                c14_cnveg_carbonstate_inst%leafc_xfer_patch(p) = leafc_xfer(p) * &
+                                    c14_cnveg_carbonstate_inst%totvegc_patch(p) / cnveg_carbonstate_inst%totvegc_patch(p)
+                            else
+                                c14_cnveg_carbonstate_inst%leafc_xfer_patch(p) = leafc_xfer(p) * c14ratio
+                            endif
+                        endif
+
+                    else
+                        gddmaturity(p) = 0._r8
                     end if
+                end if ! crop patch distinction
 
-                    ! continue fertilizer application while in phase 2;
-                    ! assumes that onset of phase 2 took one time step only
+                ! crop phenology (gdd thresholds) controlled by gdd needed for
+                ! maturity (physiological) which is based on the average gdd
+                ! accumulation and hybrids in United States from April 1 - Sept 30
 
-                      if (fert_counter(p) <= 0._r8) then
-                         fert(p) = 0._r8
-                      else ! continue same fert application every timestep
-                         fert_counter(p) = fert_counter(p) - dtrad
-                      end if
+                ! calculate threshold from phase 1 to phase 2:
+                ! threshold for attaining leaf emergence (based on fraction of
+                ! gdd(i) -- climatological average)
+                ! Hayhoe and Dwyer, 1990, Can. J. Soil Sci 70:493-497
+                ! Carlson and Gage, 1989, Agric. For. Met., 45: 313-324
+                ! J.T. Ritchie, 1991: Modeling Plant and Soil systems
 
-                 else   ! crop not live
-                    ! next 2 lines conserve mass if leaf*_xfer > 0 due to interpinic.
+                huileaf(p) = lfemerg(ivt(p)) * gddmaturity(p) ! 3-7% in cereal
+
+                ! calculate threshhold from phase 2 to phase 3:
+                ! from leaf emergence to beginning of grain-fill period
+                ! this hypothetically occurs at the end of tassling, not the beginning
+                ! tassel initiation typically begins at 0.5-0.55 * gddmaturity
+
+                ! calculate linear relationship between huigrain fraction and relative
+                ! maturity rating for maize
+
+                if (ivt(p) == ntmp_corn .or. ivt(p) == nirrig_tmp_corn .or. &
+                    ivt(p) == ntrp_corn .or. ivt(p) == nirrig_trp_corn .or. &
+                    ivt(p) == nsugarcane .or. ivt(p) == nirrig_sugarcane) then
+                    ! the following estimation of crmcorn from gddmaturity is based on a linear
+                    ! regression using data from Pioneer-brand corn hybrids (Kucharik, 2003,
+                    ! Earth Interactions 7:1-33: fig. 2)
+                    crmcorn = max(73._r8, min(135._r8, (gddmaturity(p)+ 53.683_r8)/13.882_r8))
+
+                    ! the following adjustment of grnfill based on crmcorn is based on a tuning
+                    ! of Agro-IBIS to give reasonable results for max LAI and the seasonal
+                    ! progression of LAI growth (pers. comm. C. Kucharik June 10, 2010)
+                    huigrain(p) = -0.002_r8  * (crmcorn - 73._r8) + grnfill(ivt(p))
+
+                    huigrain(p) = min(max(huigrain(p), grnfill(ivt(p))-0.1_r8), grnfill(ivt(p)))
+                    huigrain(p) = huigrain(p) * gddmaturity(p)     ! Cabelguenne et
+                else
+                    huigrain(p) = grnfill(ivt(p)) * gddmaturity(p) ! al. 1999
+                end if
+
+            end if ! crop not live nor planted
+
+            ! ----------------------------------
+            ! from AgroIBIS subroutine phenocrop
+            ! ----------------------------------
+
+            ! all of the phenology changes are based on the total number of gdd needed
+            ! to change to the next phase - based on fractions of the total gdd typical
+            ! for  that region based on the April 1 - Sept 30 window of development
+
+            ! crop phenology (gdd thresholds) controlled by gdd needed for
+            ! maturity (physiological) which is based on the average gdd
+            ! accumulation and hybrids in United States from April 1 - Sept 30
+
+            ! Phase 1: Planting to leaf emergence (now in CNAllocation)
+            ! Phase 2: Leaf emergence to beginning of grain fill (general LAI accumulation)
+            ! Phase 3: Grain fill to physiological maturity and harvest (LAI decline)
+            ! Harvest: if gdd past grain fill initiation exceeds limit
+            ! or number of days past planting reaches a maximum, the crop has
+            ! reached physiological maturity and plant is harvested;
+            ! crop could be live or dead at this stage - these limits
+            ! could lead to reaching physiological maturity or determining
+            ! a harvest date for a crop killed by an early frost (see next comments)
+            ! --- --- ---
+            ! keeping comments without the code (slevis):
+            ! if minimum temperature, t_ref2m_min <= freeze kill threshold, tkill
+            ! for 3 consecutive days and lai is above a minimum,
+            ! plant will be damaged/killed. This function is more for spring freeze events
+            ! or for early fall freeze events
+
+            ! spring temperate cereal is affected by this, winter cereal kill function
+            ! is determined in crops.f - is a more elaborate function of
+            ! cold hardening of the plant
+
+            ! currently simulates too many grid cells killed by freezing temperatures
+
+            ! removed on March 12 2002 - C. Kucharik
+            ! until it can be a bit more refined, or used at a smaller scale.
+            ! we really have no way of validating this routine
+            ! too difficult to implement on 0.5 degree scale grid cells
+            ! --- --- ---
+
+            onset_flag(p)  = 0._r8 ! CN terminology to trigger certain
+            offset_flag(p) = 0._r8 ! carbon and nitrogen transfers
+
+            if (croplive(p)) then
+                cphase(p) = 1._r8
+            
+                ! old vernalization routine inactive
+                ! call vernalization if winter temperate cereal planted, living, and the
+                ! vernalization factor is not 1;
+                ! vf affects the calculation of gddtsoi & gddplant
+
+                !if (t_ref2m_min(p) < 1.e30_r8 .and. vf(p) /= 1._r8 .and. &
+                !   (ivt(p) == nwwheat .or. ivt(p) == nirrig_wwheat .or. &
+                !     ivt(p) == ncovercrop_1 .or. ivt(p) == ncovercrop_2 .or. &
+                !     ivt(p) == nwbarley  .or. ivt(p) == nirrig_wbarley  .or. &
+                !     ivt(p) == nrapeseed  .or. ivt(p) == nirrig_rapeseed)) then
+                !     write (iulog,*)  'call vernalization old'
+                !      call vernalization(p, &
+                !          canopystate_inst, temperature_inst, waterstate_inst, cnveg_state_inst, &
+                !          crop_inst)
+
+                !new vernalization routine
+                if (vf(p) /= 1._r8 .and. &
+                (ivt(p) == nwwheat .or. ivt(p) == nirrig_wwheat .or. &
+                    ivt(p) == ncovercrop_1 .or. ivt(p) == ncovercrop_2 .or. &
+                    ivt(p) == nwbarley  .or. ivt(p) == nirrig_wbarley  .or. &
+                    ivt(p) == nrapeseed  .or. ivt(p) == nirrig_rapeseed)) then
+                    call vernalization_2(p, &
+                        temperature_inst, waterstate_inst, cnveg_state_inst, &
+                        crop_inst, cnveg_carbonflux_inst)
+                end if
+
+                ! call cold tolerance in cphase 2
+                ! if (ivt(p)== nwwheat .or. ivt(p) == nirrig_wwheat .or. &
+                !     ivt(p) == ncovercrop_1 .or. ivt(p) == ncovercrop_2 .or. &
+                !     ivt(p) == nwbarley  .or. ivt(p) == nirrig_wbarley  .or. &
+                !     ivt(p) == nrapeseed  .or. ivt(p) == nirrig_rapeseed) then
+                !      call  coldtolerance(p,canopystate_inst,temperature_inst, &
+                !          waterstate_inst,cnveg_state_inst, crop_inst, &
+                !          cnveg_nitrogenflux_inst, cnveg_carbonflux_inst, &
+                !          cnveg_carbonstate_inst, cnveg_nitrogenstate_inst)
+                ! end if
+
+
+                if (jday >= idop(p)) then
+                  idpp = jday - idop(p)
+                else
+                  idpp = int(dayspyr) + jday - idop(p)
+                end if
+
+                ! onset_counter initialized to zero when .not. croplive
+                ! offset_counter relevant only at time step of harvest
+
+                onset_counter(p) = onset_counter(p) - dt
+
+                ! enter phase 2 onset for one time step:
+                ! transfer seed carbon to leaf emergence
+
+                if (peaklai(p) >= 1) then
+                  hui(p) = max(hui(p),huigrain(p))
+                end if
+
+                if (leafout(p) >= huileaf(p) .and. hui(p) < huigrain(p) .and. idpp < mxmat(ivt(p))) then
+                cphase(p) = 2._r8           
+                
+                if (ivt(p)==nwwheat .or. ivt(p) == nirrig_wwheat .or. &
+                    ivt(p) == ncovercrop_1 .or. ivt(p) == ncovercrop_2 .or. &
+                    ivt(p) == nwbarley  .or. ivt(p) == nirrig_wbarley  .or. &
+                    ivt(p) == nrapeseed  .or. ivt(p) == nirrig_rapeseed) then
+                    call  coldtolerance(p,canopystate_inst,temperature_inst, &
+                        waterstate_inst,cnveg_state_inst, crop_inst, &
+                        cnveg_nitrogenflux_inst, cnveg_carbonflux_inst, &
+                        cnveg_carbonstate_inst, cnveg_nitrogenstate_inst)
+                end if
+                    
+
+                if (abs(onset_counter(p)) > 1.e-6_r8) then
+                    onset_flag(p)    = 1._r8
+                    onset_counter(p) = dt
+                    fert_counter(p)  = ndays_on * secspday
+                    if (ndays_on .gt. 0) then
+                        fert(p) = (manunitro(ivt(p)) * 1000._r8 + fertnitro(p))/ fert_counter(p)
+                    else
+                        fert(p) = 0._r8
+                    end if
+                else
+                    ! this ensures no re-entry to onset of phase2
+                    ! b/c onset_counter(p) = onset_counter(p) - dt
+                    ! at every time step
+
+                    onset_counter(p) = dt
+                end if
+
+                ! enter harvest for one time step:
+                ! - transfer live biomass to litter and to crop yield
+                ! - send xsmrpool to the atmosphere
+                ! if onset and harvest needed to last longer than one timestep
+                ! the onset_counter would change from dt and you'd need to make
+                ! changes to the offset subroutine below
+
+                else if (hui(p) >= gddmaturity(p) .or. idpp >= mxmat(ivt(p))) then
+                if (harvdate(p) >= NOT_Harvested)then
+                    harvdate(p) = jday
+                    if (covercrop(ivt(p)) == 1) then
+                        call covercropping(p, crop_inst, cnveg_state_inst)
+                    else
+                    croplive(p) = .false.     ! no re-entry in greater if-block
+                    cphase(p) = 4._r8
+                    end if
+                endif
+                if (tlai(p) > 0._r8) then ! plant had emerged before harvest
+                    write (iulog,*)  'plant emerged'
+                    offset_flag(p) = 1._r8
+                    offset_counter(p) = dt
+                else                      ! plant never emerged from the ground
+                    ! Revert planting transfers; this will replenish the crop seed deficit.
                     ! We subtract from any existing value in crop_seedc_to_leaf /
                     ! crop_seedn_to_leaf in the unlikely event that we enter this block of
                     ! code in the same time step where the planting transfer originally
                     ! occurred.
+                    !write (iulog,*)  'plant not emerged'
                     crop_seedc_to_leaf(p) = crop_seedc_to_leaf(p) - leafc_xfer(p)/dt
                     crop_seedn_to_leaf(p) = crop_seedn_to_leaf(p) - leafn_xfer(p)/dt
-                    onset_counter(p) = 0._r8
                     leafc_xfer(p) = 0._r8
                     leafn_xfer(p) = leafc_xfer(p) / leafcn(ivt(p))
+                    frootc_xfer(p) = 0._r8
+                    frootn_xfer(p) = 0._r8 !frootc_xfer(p) / frootcn((ivt)p) ! with onset 
                     if (use_c13) then
-                       c13_cnveg_carbonstate_inst%leafc_xfer_patch(p) = 0._r8
+                        c13_cnveg_carbonstate_inst%leafc_xfer_patch(p) = 0._r8
                     endif
                     if (use_c14) then
-                       c14_cnveg_carbonstate_inst%leafc_xfer_patch(p) = 0._r8
+                        c14_cnveg_carbonstate_inst%leafc_xfer_patch(p) = 0._r8
                     endif
-                 end if ! croplive
-         end if ! not perennial
+
+                end if
+                
+                ! enter phase 3 while previous criteria fail and next is true;
+                ! in terms of order, phase 3 occurs before harvest, but when
+                ! harvest *can* occur, we want it to have first priority.
+                ! AgroIBIS uses a complex formula for lai decline.
+                ! Use CN's simple formula at least as a place holder (slevis)
+
+                else if (hui(p) >= huigrain(p)) then
+                cphase(p) = 3._r8
+                bglfr(p) = 1._r8/(leaf_long(ivt(p))*dayspyr*secspday)
+                end if
+
+                ! continue fertilizer application while in phase 2;
+                ! assumes that onset of phase 2 took one time step only
+
+                if (fert_counter(p) <= 0._r8) then
+                    fert(p) = 0._r8
+                else ! continue same fert application every timestep
+                    fert_counter(p) = fert_counter(p) - dtrad
+                end if
+
+            else   ! crop not live
+                ! next 2 lines conserve mass if leaf*_xfer > 0 due to interpinic.
+                ! We subtract from any existing value in crop_seedc_to_leaf /
+                ! crop_seedn_to_leaf in the unlikely event that we enter this block of
+                ! code in the same time step where the planting transfer originally
+                ! occurred.
+                crop_seedc_to_leaf(p) = crop_seedc_to_leaf(p) - leafc_xfer(p)/dt
+                crop_seedn_to_leaf(p) = crop_seedn_to_leaf(p) - leafn_xfer(p)/dt
+                onset_counter(p) = 0._r8
+                leafc_xfer(p) = 0._r8
+                leafn_xfer(p) = leafc_xfer(p) / leafcn(ivt(p))
+                if (use_c13) then
+                  c13_cnveg_carbonstate_inst%leafc_xfer_patch(p) = 0._r8
+                endif
+                if (use_c14) then
+                  c14_cnveg_carbonstate_inst%leafc_xfer_patch(p) = 0._r8
+                endif
+            end if ! croplive
+        end if ! not perennial
       end do ! prognostic crops loop
 
     end associate
@@ -2805,6 +2917,97 @@ contains
     tbase = 0._r8
 
   end subroutine CropPhenologyInit
+
+ !-----------------------------------------------------------------------
+  subroutine covercropping(p, crop_inst, cnveg_state_inst)
+
+    !
+    ! !DESCRIPTION:
+    ! !Covercropping subroutine allows second onset of phenology for cover crop after harvest of cash crops and immediate rotation to winter cash crop following a summer cash crop
+    ! * * * only call when covercrop(ivt(p)) == 1 * * *
+    !
+    !
+
+    ! !USES:
+    use pftconMod        , only : ntmp_corn, nswheat,nwwheat,ntmp_soybean,nbarley, nwbarley, nrye, nwrye, ncassava, ncitrus, ncocoa,ncoffee,ncotton,ndatepalm, nfoddergrass, ngrapes, ngroundnuts, nmillet,noilpalm,npotatoes,npulses, nrapeseed, nrice, nsorghum, nsugarbeet,nsunflower,nmiscanthus,nswitchgrass, nc3crop, ncovercrop_1, ncovercrop_2
+    use pftconMod        , only : nirrig_tmp_corn,nirrig_swheat,nirrig_wwheat,nirrig_tmp_soybean, nirrig_barley, nirrig_wbarley,nirrig_rye,nirrig_wrye,nirrig_cassava, nirrig_citrus, nirrig_cocoa,nirrig_coffee,nirrig_cotton,nirrig_datepalm, nirrig_foddergrass,nirrig_grapes,nirrig_groundnuts,nirrig_millet, nirrig_oilpalm, nirrig_potatoes,nirrig_pulses,nirrig_rapeseed,nirrig_rice, nirrig_sorghum,nirrig_sugarbeet,nirrig_sunflower,nirrig_miscanthus, nirrig_switchgrass,nc3irrig
+    use pftconMod        , only : ntrp_corn, nsugarcane, ncotton, nrice
+    use pftconMod        , only : nirrig_trp_corn, nirrig_sugarcane
+    use pftconMod        , only : nirrig_cotton, nirrig_rice
+    use clm_varctl       , only : use_grainproduct
+    use clm_time_manager, only:  get_curr_calday
+
+    ! !ARGUMENTS:
+    integer                , intent(in)    :: p    ! PATCH index running over
+    type(crop_type)        , intent(inout) :: crop_inst
+    type(cnveg_state_type) , intent(inout) :: cnveg_state_inst
+
+    !
+    ! LOCAL VARAIBLES:
+    integer jday      ! julian day of the year
+    integer cashcrop1 ! first cash crop in rotation cycle
+    integer cashcrop2 ! second cash crop in rotation cycle
+    integer covercrop1 ! first cover crop in rotation cycle
+    integer covercrop2 ! second cover crop in rotation cycle
+    !! list can be extended
+
+    !------------------------------------------------------------------------
+
+    associate(                                             &
+         ivt               =>    patch%itype                     ,& ! Input:[integer  (:) ]  patch vegetation type
+         cphase            =>    crop_inst%cphase_patch          ,& ! Output:[real(r8) (:)]   phenology phase
+         idop              =>    cnveg_state_inst%idop_patch     ,& ! Output:[integer  (:) ]  date of planting
+         croplive          =>    crop_inst%croplive_patch        ,& ! Output:[logical  (:) ]  Flag, true if planted, not harvested
+         cropplant         =>    crop_inst%cropplant_patch       ,& ! Output:[logical  (:) ]  Flag, true if crop may be planted
+         harvdate          =>    crop_inst%harvdate_patch         & ! Output:[integer  (:) ]  harvest date
+            )
+
+      jday    = get_curr_calday()
+      ! add read in function from .txt file for flexible variable setting
+      ! define crop rotation: variable assignment can be changes and list can be extended
+      cashcrop1 = nswheat
+      cashcrop2 = nsugarbeet
+      covercrop1 = ncovercrop_1
+      covercrop2 = ncovercrop_2
+
+      if (harvdate(p) >= 150._r8 .and. ivt(p) == cashcrop1) then
+         ivt(p)= covercrop1
+         ! write (iulog,*)  'cft changed to covercrop'
+         croplive(p) = .false.
+         cropplant(p) = .false.
+         idop(p)      = NOT_Planted
+         use_grainproduct = .false.
+
+      else if (harvdate(p) <= 170._r8 .and. ivt(p) == covercrop1) then
+         ivt(p)= cashcrop2
+         ! write (iulog,*)  'cft changed to cashcrop2'
+         croplive(p) = .false.
+         cropplant(p) = .false.
+         idop(p)      = NOT_Planted
+         use_grainproduct = .true.
+
+      else if (harvdate(p) >= 150._r8 .and. ivt(p) == cashcrop2) then
+         ivt(p)= covercrop2
+         ! write (iulog,*)  'cft changed to covercrop2'
+         croplive(p) = .false.
+         cropplant(p) = .false.
+         idop(p)      = NOT_Planted
+         use_grainproduct = .false.
+
+      else if (harvdate(p) <= 170._r8 .and. ivt(p) == covercrop2) then
+         ivt(p)= cashcrop1
+         ! write (iulog,*)  'cft changed back to cashcrop1 - beginning of next
+         ! rotatoin cycle'
+         croplive(p) = .false.
+         cropplant(p) = .false.
+         idop(p)      = NOT_Planted
+         use_grainproduct = .true.
+
+      end if
+
+    end associate
+
+  end subroutine covercropping
 
   !-----------------------------------------------------------------------
   subroutine vernalization(p, &
@@ -2883,9 +3086,11 @@ contains
             cumvd(p) = cumvd(p) - 0.5_r8 * (t_ref2m_max(p) - tfrz - 30._r8)
          end if
          cumvd(p) = max(0._r8, cumvd(p))       ! must be > 0
+         write(iulog,*)'vernalization_old cumvd(p)=', cumvd(p)
 
          vf(p) = 1._r8 - p1v * (50._r8 - cumvd(p))
          vf(p) = max(0._r8, min(vf(p), 1._r8)) ! must be between 0 - 1
+         write(iulog,*)'vernalization_old vf(p)=', vf(p)
       end if
 
       ! calculate cold hardening of plant
@@ -2949,6 +3154,251 @@ contains
 
   end subroutine vernalization
 
+
+ !-----------------------------------------------------------------------
+  subroutine vernalization_2(p, &
+             temperature_inst, waterstate_inst, cnveg_state_inst, crop_inst, cnveg_carbonflux_inst)
+
+   !
+   ! !DESCRIPTION:
+   ! !Alternative vernalization routine tranfered from CLM 4.5 after Lu et al. (2017) (tboas)
+   ! * * * only call for winter temperate cereal * * *
+   !
+   ! subroutine calculates vernalization and photoperiod effects on
+   ! gdd accumulation in winter temperate cereal varieties. Thermal time
+   ! accumulation is reduced in 1st period until plant is fully vernalized. 
+   ! During this time of emergence to spikelet formation, photoperiod can also have a
+   ! drastic effect on plant development.
+
+    use clm_time_manager, only: get_step_size,get_curr_date
+
+    !
+    ! !ARGUMENTS:
+    integer                , intent(in)    :: p    ! PATCH index running over
+    type(temperature_type) , intent(in)    :: temperature_inst
+    type(waterstate_type)  , intent(in)    :: waterstate_inst
+    type(cnveg_state_type) , intent(inout) :: cnveg_state_inst
+    type(crop_type)        , intent(inout) :: crop_inst
+    type(cnveg_carbonflux_type) , intent(inout) :: cnveg_carbonflux_inst
+ 
+
+    !
+    ! LOCAL VARAIBLES:
+    real(r8) vd, vd1, vd2               ! vernalization dependence
+    real(r8) vtmin,vtopt,vtmax          ! vernalization minimum, optimum, maximumtemperature
+    real(r8) alpha                      ! parameter in calculating vernalization rate
+    real(r8) tc                         ! t_ref2m in degree C
+    !real(r8) tcrown                     ! ?
+    integer c            ! column indices
+    integer g            ! gridcell indices
+    real(r8) dt          ! land model time step (sec)
+    real(r8) dtime       ! convert dt from sec to hour
+
+    associate(                                                        &
+         ivt              => patch%itype                                   , & ! Input: [integer (:)]  pft vegetation type
+         cumvd            => cnveg_state_inst%cumvd_patch                  , & ! Output: [real(r8) (:)] cumulative vernalization d?ependence?
+         vf               => crop_inst%vf_patch                            , & ! Output: [real(r8) (:)] vernalization factor for cereal
+         t_ref2m          => temperature_inst%t_ref2m_patch                , & ! Input:  [real(r8) (:)] 2 m height surface air temperature (K)
+         tcrown           => crop_inst%tcrown_patch                        , & ! Output: [real(r8) (:)] crown temperature
+         snow_depth       => waterstate_inst%snow_depth_col                , & ! Input:  [real(r8) (:)] snow height (m)
+         hui              => crop_inst%gddplant_patch                      , & ! Input:  [real(r8) (:) ]  gdd since planting (gddplant)
+         leafout          =>    crop_inst%gddtsoi_patch                    , & ! Input:  [real(r8) (:) ]  gdd from top soil layer temperature
+         cpool_to_grainc  => cnveg_carbonflux_inst%cpool_to_grainc_patch     & ! Input:  [real(r8) (:) ]  allocation to grain C (gC/m2/s)
+         )
+
+      c = patch%column(p)
+      dt=real( get_step_size(), r8 )
+
+      if (t_ref2m(p) < tfrz) then
+         tcrown(p) = 2._r8 + (t_ref2m(p) - tfrz) * (0.4_r8 + 0.0018_r8 * &
+                  (min(snow_depth(c)*100._r8, 15._r8) - 15._r8)**2)
+      else 
+         tcrown(p) = t_ref2m(p) - tfrz
+      end if
+        
+      ! write (iulog,*)  'subroutine vernalization_2'
+
+        ! Vernalization factor calculation
+        ! if vf(p) = 1.  then plant is fully vernalized - and thermal time
+        ! accumulation in phase 1 will be unaffected
+        ! refers to gddtsoi & gddplant, defined in the accumulation routines (slevis)
+        ! reset vf, cumvd, and hdidx to 0 at planting of crop (slevis)
+        !-----------------------------------------------------------------------------
+        !-----------------------------------------------------------------------------
+        ! ylu modified the vernalization function 10/16/15
+        ! A generalized vernalization response function for winter wheat (Streck et al.,2003) was used here
+        ! Streck, N.A., Weiss, A., Baenziger, P.S., 2003. A generalized  vernalization response &
+        ! function for winter wheat. Agron. J. 95
+
+      vtmin=-1.3_r8
+      vtopt=4.9_r8
+      vtmax=15.7_r8
+      dtime=dt/3600.0_r8  !dtime is the time step in hour
+
+      alpha=log(2._r8)/(log((vtmax-vtmin)/(vtopt-vtmin)))
+      write(iulog,*) 'alpha=',alpha
+      write(iulog,*) 'tcrown=',tcrown(p)
+      !tc = t_ref2m(p)-tfrz
+      if(tcrown(p) >=vtmin .and. tcrown(p) <= vtmax) then
+       cumvd(p)=cumvd(p) + ((2._r8*((tcrown(p)-vtmin)**alpha)*(vtopt-vtmin)**alpha &
+               - (tcrown(p)-vtmin)**(2._r8*alpha))/((vtopt-vtmin)**(2._r8*alpha)))*(dtime/24._r8)
+      end if
+      cumvd(p) = max(0._r8, cumvd(p))       ! must be > 0
+
+      write(iulog,*)'vernalization_2 cumvd(p)=', cumvd(p)
+      vf(p)=(cumvd(p)**5._r8)/(22.5_r8**5._r8+cumvd(p)**5._r8)
+      vf(p) = max(0._r8, min(vf(p), 1._r8)) ! must be between 0 - 1
+      write(iulog,*)'vernalization_2 vf(p)=', vf(p)
+
+    write(iulog,*)'vernalization_2 cpool_to_grainc(p),hui(p) ',hui(p),cpool_to_grainc(p)
+
+    end associate
+
+  end subroutine vernalization_2
+
+  !-----------------------------------------------------------------------
+  subroutine coldtolerance (p,canopystate_inst,temperature_inst, &
+       waterstate_inst,cnveg_state_inst, crop_inst, &
+       cnveg_nitrogenflux_inst, cnveg_carbonflux_inst, &
+       cnveg_carbonstate_inst, cnveg_nitrogenstate_inst)
+    
+    ! !DESCRIPTION:
+    ! !Subroutine for coldtolerance modified after Lu(2017): 'Representing witer wheat in the Community Land Model (version  4.5) (tboas)
+    ! * * * only call for winter temperate cereal * * *
+    !
+    !the subroutine calculates the lethal temperature at 50% of crop alive,
+    !survival rate, winter degree days
+
+
+    use clm_time_manager, only: get_step_size,get_curr_date
+
+    !
+    ! !ARGUMENTS:
+    !implicit none
+    integer, intent(in) :: p    ! PFT index running over
+    type(canopystate_type) , intent(in)    :: canopystate_inst
+    type(temperature_type) , intent(in)    :: temperature_inst
+    type(waterstate_type)  , intent(in)    :: waterstate_inst
+    type(cnveg_carbonstate_type)  , intent(in)    :: cnveg_carbonstate_inst
+    type(cnveg_nitrogenstate_type), intent(in)    :: cnveg_nitrogenstate_inst
+    type(cnveg_state_type) , intent(inout) :: cnveg_state_inst
+    type(crop_type)        , intent(inout) :: crop_inst
+    type(cnveg_nitrogenflux_type)        , intent(inout) :: cnveg_nitrogenflux_inst
+    type(cnveg_carbonflux_type)        , intent(inout) :: cnveg_carbonflux_inst
+   !
+
+    ! LOCAL VARAIBLES:
+    real(r8) tcrown                     ! crown temperature
+    logical :: end_cd                    ! temporary for is_end_curr_day() value
+    real(r8) tc                         ! t_ref2m in degree C
+    real(r8) prevleafc                  ! previous step leafc
+    real(r8) tempfsurv                  ! averaged survival rate
+    integer c            ! column indices
+    integer g            ! gridcell indices
+    real(r8) dt          ! land model time step (sec) 
+    real(r8) dtime       ! convert dt from sec to hour
+    integer  :: kyr     ! current year
+    integer  :: kmo     ! month of year  (1, ..., 12)
+    integer  :: kda     ! day of month   (1, ..., 31)
+    integer  :: mcsec   ! seconds of day (0, ..., seconds/day)
+    real(r8), parameter :: Hparam=0.0093
+    real(r8), parameter :: Dparam=2.7e-5
+    real(r8), parameter :: Sparam=1.9
+    real(r8), parameter :: Rparam=0.54
+    real(r8), parameter :: T_S_max=12.5
+    real(r8), parameter :: lt50max=-23
+   !the calculation of frost tolerance is based on Bergjord et al.,(2008),Europ.J.Agronomuy
+   !the calculation of survival rate and WDD is based on Vico et al.,(2014),Agri and Forest Metero.
+
+   !------------------------------------------------------------------------
+
+    associate(                                                        &
+         ivt              => patch%itype                            , & ! Input:  [integer (:)]  pft vegetation type
+         croplive         => crop_inst%croplive_patch        , & ! Input:  [logical (:)]  Flag,true if planted, not harvested
+         hdidx            => cnveg_state_inst%hdidx_patch           , & ! Output: [real(r8) (:)] cold hardening index?
+         rateh            => crop_inst%rateh_patch           , & ! Output: [real(r8)(:)] increase of tolerance cuased byhardening
+         rated            => crop_inst%rated_patch           , & ! Output: [real(r8) (:)] loss of tolerance cause by dehardening
+         rates            => crop_inst%rates_patch           , & ! Output: [real(r8) (:)] loss of tolerance caused by low tempeature
+         rater            => crop_inst%rater_patch           , & ! Output: [real(r8) (:)] loss of tolerance caused by respiration under snow
+         lt50             => crop_inst%lt50_patch            , & ! Output: [real(r8) (:)] the lethal temperature at which 50% of the individuals are damaged
+         fsurv            => crop_inst%fsurv_patch           , & ! Output: [real(r8) (:)] winter wheat survival rate
+         accfsurv         => crop_inst%accfsurv_patch        , & ! Output: [real(r8) (:)] accumulated winter wheat survival rate [0<WDD<1]
+         countfsurv       => crop_inst%countfsurv_patch      , & ! Output: [real(r8) (:)] numbers of accumulated winter wheat survival rate
+         wdd              => crop_inst%wdd_patch             , & ! Output: [real(r8) (:)] winter wheat weighted cumulated degree days
+         ck               => crop_inst%ck_patch              , & ! Output: [real(r8) (:)] fraction of green leaf area killed
+         cumvd            => cnveg_state_inst%cumvd_patch           , & ! Output: [real(r8) (:)] cumulative vernalization d?ependence?
+         vf               => crop_inst%vf_patch                     , & ! Output: [real(r8) (:)] vernalization factor for cereal
+         gddmaturity      => cnveg_state_inst%gddmaturity_patch            , & ! Output: [real(r8) (:)] gdd needed to harvest
+         huigrain         => cnveg_state_inst%huigrain_patch               , & ! Output: [real(r8) (:)] heat unit index needed to reach vegetative maturity
+         leafc_to_litter  => cnveg_carbonflux_inst%leafc_to_litter_patch   , & ! Output:  [real(r8) (:)] leaf C litterfall (gC/m2/s)
+         leafn_to_litter  => cnveg_nitrogenflux_inst%leafn_to_litter_patch , & ! Output:  [real(r8) (:)] leaf N litterfall (gN/m2/s)
+         leafc            => cnveg_carbonstate_inst%leafc_patch            , & ! Input:  [real(r8) (:)] (gC/m2) leaf C
+         leafcn           => pftcon%leafcn                                 , & ! Input:  [real(r8) (:)] leaf C:N (gC/gN)
+         leafn            => cnveg_nitrogenstate_inst%leafn_patch          , & ! Input:  [real(r8)(:)]  (gN/m2) leaf N
+         lflitcn          => pftcon%lflitcn                                , & ! Input:  [real(r8) (:)] leaf litter C:N (gC/gN)
+         tlai             => canopystate_inst%tlai_patch                   , & ! Input:  [real(r8) (:)] one-sided leaf area index, no burying by snow
+         t_ref2m          => temperature_inst%t_ref2m_patch                , & ! Input:  [real(r8) (:)] 2 m height surface air temperature (K)
+         tcrown           => crop_inst%tcrown_patch                        , & ! Output: [real(r8) (:)] crown temperature
+         snow_depth       => waterstate_inst%snow_depth_col                 & ! Input:  [real(r8) (:)] snow height (m)
+         )
+
+        c = patch%column(p)
+        dt=real( get_step_size(), r8 )
+
+        if (t_ref2m(p) < tfrz) then !slevis: t_ref2m inst of td=daily avg (K)
+           tcrown(p) = 2._r8 + (t_ref2m(p) - tfrz) * (0.4_r8 + 0.0018_r8 * &
+                    (min(snow_depth(c)*100._r8, 15._r8) - 15._r8)**2)
+        else !slevis: snow_depth inst of adsnod=daily average (m)
+           tcrown(p) = t_ref2m(p) - tfrz
+        end if
+
+        dtime=dt/3600.0_r8  !dtime is the time step dt in hour
+
+!frost tolerance and survival rate calculation
+
+        if(tcrown(p) < 10._r8) then
+           rateh(p)=Hparam*(10._r8-tcrown(p))*(lt50(p)-lt50max)
+           write(iulog,*) 'rateh=',rateh(p),'lt50=',lt50(p),'tcrown=',tcrown(p)
+           write(iulog,*) 'snow_depth=',snow_depth(c)
+        end if
+
+        if((tcrown(p) >=-4._r8 .and. vf(p) == 1._r8) .or. (tcrown(p)>=10._r8 .and. vf(p) <1._r8)) then
+            rated(p)=Dparam*(-0.6_r8+0.142_r8*lt50max-lt50(p))*(tcrown(p)+4._r8)**3._r8
+        end if
+
+       rater(p)=Rparam*(exp(0.84+0.051*tcrown(p))-2._r8)/1.85_r8*(snow_depth(c)*100._r8)/12.5
+       rates(p)=(lt50(p)-tcrown(p))/exp(-Sparam*(lt50(p)-tcrown(p))-3.74_r8)
+       lt50(p)=lt50(p)+(rated(p)+rates(p)+rater(p)-rateh(p))*(dtime/24._r8)
+
+       fsurv(p)=2._r8**(-(abs(tcrown(p))/abs(lt50(p)))**4._r8)
+       wdd(p)=wdd(p)+(max(tbase-tcrown(p),0._r8)*(1._r8-fsurv(p)))*(dtime/24._r8)
+
+       if(wdd(p) >0._r8) then
+           accfsurv(p) = accfsurv(p) + fsurv(p)
+           countfsurv(p) = countfsurv(p) + 1._r8
+       end if
+
+       call get_curr_date(kyr, kmo, kda, mcsec)
+       end_cd = (mcsec == 0)
+       if( end_cd .and. wdd(p) > 0._r8 .and. vf(p) <0.9_r8 .and. leafc(p) > 10._r8 ) then
+            leafc_to_litter(p)=leafc_to_litter(p)+5._r8*(1._r8-fsurv(p))/dt
+            leafn_to_litter(p)=leafn_to_litter(p)+(5._r8*(1._r8-fsurv(p)))/(dt*lflitcn(ivt(p)))
+       end if
+
+       if(end_cd .and. wdd(p) > 1.0_r8 .and. vf(p)>0.9_r8 ) then
+          tempfsurv=accfsurv(p)/countfsurv(p)
+           prevleafc=leafc(p)
+           leafc_to_litter(p)=leafc_to_litter(p)+prevleafc*(1._r8-tempfsurv)/dt
+           leafn_to_litter(p)=leafn_to_litter(p)+(prevleafc*(1._r8-tempfsurv))/(dt*lflitcn(ivt(p)))
+           accfsurv(p) = 1._r8
+           countfsurv(p) = 1._r8
+           wdd(p) =0._r8
+           write (iulog,*)  'subroutine coldtolerance ending'
+       end if
+
+    end associate
+  end subroutine coldtolerance
+
   !-----------------------------------------------------------------------
   subroutine CNOnsetGrowth (num_soilp, filter_soilp, &
        cnveg_state_inst, &
@@ -3008,7 +3458,7 @@ contains
          livestemn_xfer_to_livestemn         =>    cnveg_nitrogenflux_inst%livestemn_xfer_to_livestemn_patch   , & ! Output:  [real(r8) (:) ]                                                    
          deadstemn_xfer_to_deadstemn         =>    cnveg_nitrogenflux_inst%deadstemn_xfer_to_deadstemn_patch   , & ! Output:  [real(r8) (:) ]                                                    
          livecrootn_xfer_to_livecrootn       =>    cnveg_nitrogenflux_inst%livecrootn_xfer_to_livecrootn_patch , & ! Output:  [real(r8) (:) ]                                                    
-         deadcrootn_xfer_to_deadcrootn       =>    cnveg_nitrogenflux_inst%deadcrootn_xfer_to_deadcrootn_patch   & ! Output:  [real(r8) (:) ]                                                    
+         deadcrootn_xfer_to_deadcrootn       =>    cnveg_nitrogenflux_inst%deadcrootn_xfer_to_deadcrootn_patch  & ! Output:  [real(r8) (:) ]                                                    
          )
 
       ! patch loop
